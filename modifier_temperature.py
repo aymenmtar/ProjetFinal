@@ -1,15 +1,26 @@
-"""Cette classe contient 2 fonctions qui permettent de gérer la modification de la température
-La première fonction (modifier_temperature_constante) modifie la température de manière constante
-La deuxième fonction (modifier_temperature_lineaire) modifie la température de manière linéaire
 
-"""
 class ModificateurTemperature:
+    """Cette classe contient 2 fonctions qui permettent de gérer la modification de la température
+        :param couches: liste contenant les lignes de commandes de chaque couche d'un gcode
+        :type couches: list
+    La première fonction (modifier_temperature_constante) modifie la température de manière constante
+    La deuxième fonction (modifier_temperature_lineaire) modifie la température de manière linéaire
+
+    """
     def __init__(self, couches):
         self.couches = couches
 
     # fonction qui permet de modifier la temperature couche par couche sur la phase choisie par
     # l'utilisateur de manière constante (même température sur chaque couche de la phase)
     def modifier_temperature_constante(self, modifs_temp, phases):
+        """
+                   Modifier la température de manière constante.
+
+                   :param modifs_temp: la température donnée par l'utilisateur dans le main
+                   :param phases : liste contenant les commandes des couches de la phase
+                   :type phases : liste
+                   :return: couches : liste contenant les commandes pour chaque couche avec la température modifiée de manière constante
+                   """
         for i, (debut, fin) in enumerate(phases):
             if i in modifs_temp:
                 temp = modifs_temp[i]
@@ -29,6 +40,14 @@ class ModificateurTemperature:
     # fonction qui permet de modifier la temperature couche par couche sur la phase choisie par
     # l'utilisateur de manière linéaire (température différente sur sur chaque couche de la phase)
     def modifier_temperature_lineaire(self, modifs_temp, phases):
+        """
+            Modifier la température de manière linéaire.
+            :param modifs_temp: les températures donnée par l'utilisateur dans le main
+            :param phases : liste contenant les commandes des couches de la phase
+            :type phases : liste
+            :return: couches : liste contenant les commandes pour chaque couche avec la température modifiée de manière linéaire couches par
+            couches
+            """
         for i, (debut, fin) in enumerate(phases):
             #création du pas de température en fonction des températures initiales et finales et
             # du nombre de couches

@@ -9,6 +9,13 @@ from modifier_vitesse import ModificateurVitesse
 
 # fonction pour sauvegarder le nouveau fichier gcode
 def sauvegarder_gcode(couches, chemin_sortie):
+    """
+    Sauvegarder un fichier gcode.
+    :param couches: liste contenant les commandes modifiées (vitesse et/ou température) pour chaque couche
+    :type couches : list
+    :param chemin_sortie : path pour le nouveau fichier
+    :type chemin_sortie : str
+                """
     code_final = []
     for couche in couches:
         code_final.extend(couche)
