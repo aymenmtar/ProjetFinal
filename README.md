@@ -14,3 +14,5 @@ Après avoir effectué toutes les modifications voulues sur le Gcode, le program
 
 Les valeurs de température sont à entrer en °C et celles de vitesse en mm/s
 
+Une documentation de ce code est disiponible en ligne : file:///Users/beneturbant/Documents/ETS/SE24/MGA802/finale/build/html/index.html#
+
