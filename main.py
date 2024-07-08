@@ -1,18 +1,28 @@
+"""""Bienvenue, ce code permet de modifier un fichier gcode afin de modifier la vitesse
+et la température d'extrusion par phase de la pièce
+"""
+#importattion des différents modules
 import os
 from lire_codeg import LecteurCodeG
 from modifier_temperature import ModificateurTemperature
 from modifier_vitesse import ModificateurVitesse
 
+# fonction pour sauvegarder le nouveau fichier gcode
 def sauvegarder_gcode(couches, chemin_sortie):
     code_final = []
     for couche in couches:
         code_final.extend(couche)
     with open(chemin_sortie, 'w') as fichier:
         fichier.writelines(code_final)
+
+
 def main():
+    # ouverture du fichier gcode à l'aide de la classe LecteurCodeG
     chemin_fichier = input("Entrez le chemin du fichier G-code : ")
     lecteur_codeg = LecteurCodeG(chemin_fichier)
+    # affichage du nombre de couches de la pièce
     print(f"Nombre total de couches : {lecteur_codeg.obtenir_nombre_de_couches()}")
+    # demande à l'utilisateur du nombre de phases, des couches initiales et finales
     nombre_phases = int(input("Entrez le nombre de phases : "))
     phases = []
     for i in range(nombre_phases):
@@ -21,6 +31,7 @@ def main():
         phases.append((couche_debut, couche_fin))
 
     modifs_temp = {}
+    # choix de modifier la température ou non et choix de la température en °C + constante/linéaire
     changer_temp = input("Voulez-vous changer la température de la buse pour une phase spécifique ? (oui/non) : ").strip().lower()
     if changer_temp == 'oui':
         while True:
@@ -33,11 +44,13 @@ def main():
                 temp_debut = int(input("Entrez la température de la première couche de la phase : "))
                 temp_fin = int(input("Entrez la température de la dernière couche de la phase : "))
                 modifs_temp[phase_num - 1] = (temp_debut, temp_fin)
+            # modifier la température d'une autre phase
             continuer_changement = input("Voulez-vous changer la température pour une autre phase ? (oui/non) : ").strip().lower()
             if continuer_changement != 'oui':
                 break
 
     modifs_vitesse = {}
+    # choix de modifier la vitesse et choix de la vitesse en mm/s (constante/linéaire)
     changer_vitesse = input("Voulez-vous changer la vitesse d'impression pour une phase spécifique ? (oui/non) : ").strip().lower()
     if changer_vitesse == 'oui':
         while True:
@@ -57,12 +70,14 @@ def main():
                 vitesse_debut_mm_min = vitesse_debut * 60
                 vitesse_fin_mm_min = vitesse_fin * 60
                 modifs_vitesse[phase_num - 1] = (vitesse_debut_mm_min, vitesse_fin_mm_min)
+            # modifier la vitesse pour une autre phase
             continuer_changement = input("Voulez-vous changer la vitesse pour une autre phase ? (oui/non) : ").strip().lower()
             if continuer_changement != 'oui':
                 break
 
     couches_modifiees = lecteur_codeg.obtenir_couches()
 
+    #modification des ligne de gcode pour la modification de la température à l'aide de la classe ModificateurTemperature
     if modifs_temp:
         modificateur_temp = ModificateurTemperature(couches_modifiees)
         for i, variation_type in modifs_temp.items():
@@ -71,6 +86,7 @@ def main():
             elif isinstance(variation_type, tuple):  # Température linéaire
                 couches_modifiees = modificateur_temp.modifier_temperature_lineaire({i: variation_type}, [phases[i]])
 
+    #modification des lignes de gcode pour la modification de la température à la de la classe ModificateurVitesse
     if modifs_vitesse:
         modificateur_vitesse = ModificateurVitesse(couches_modifiees)
         for i, variation_type in modifs_vitesse.items():
@@ -83,7 +99,7 @@ def main():
     nom_fichier_entree = os.path.basename(chemin_fichier)
     nom_fichier_sortie = os.path.splitext(nom_fichier_entree)[0] + "_modifie.gcode"
     chemin_fichier_sortie = os.path.join(os.path.dirname(chemin_fichier), nom_fichier_sortie)
-
+    # le nouveau fichier est sauvegardé sous le nom initial+modifier.gcode
     sauvegarder_gcode(couches_modifiees, chemin_fichier_sortie)
     print(f"Nouveau fichier G-code écrit dans {chemin_fichier_sortie}")
 
