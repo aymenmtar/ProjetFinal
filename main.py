@@ -8,7 +8,7 @@ from modifier_temperature import ModificateurTemperature
 from modifier_vitesse import ModificateurVitesse
 
 # fonction pour sauvegarder le nouveau fichier gcode
-def sauvegarder_gcode(couches, chemin_sortie):
+def sauvegarder_gcode(phases_modifiees, chemin_sortie):
     """
     Sauvegarder un fichier gcode.
     :param couches: liste contenant les commandes modifiées (vitesse et/ou température) pour chaque couche
@@ -17,8 +17,9 @@ def sauvegarder_gcode(couches, chemin_sortie):
     :type chemin_sortie : str
                 """
     code_final = []
-    for couche in couches:
-        code_final.extend(couche)
+    for phase in phases_modifiees:
+        for couche in phase:
+            code_final.extend(couche)
     with open(chemin_sortie, 'w') as fichier:
         fichier.writelines(code_final)
 
@@ -82,32 +83,35 @@ def main():
             if continuer_changement != 'oui':
                 break
 
-    couches_modifiees = lecteur_codeg.obtenir_couches()
+    couches = lecteur_codeg.obtenir_couches()
+    phases_modifiees = []
 
-    #modification des ligne de gcode pour la modification de la température à l'aide de la classe ModificateurTemperature
-    if modifs_temp:
-        modificateur_temp = ModificateurTemperature(couches_modifiees)
-        for i, variation_type in modifs_temp.items():
-            if isinstance(variation_type, int):  # Température constante
-                couches_modifiees = modificateur_temp.modifier_temperature_constante({i: variation_type}, [phases[i]])
-            elif isinstance(variation_type, tuple):  # Température linéaire
-                couches_modifiees = modificateur_temp.modifier_temperature_lineaire({i: variation_type}, [phases[i]])
+    for i, (debut, fin) in enumerate(phases):
+        couches_phase = couches[debut - 1:fin]
+        if i in modifs_temp:
+            modificateur_temp = ModificateurTemperature()
+            if isinstance(modifs_temp[i], int):  # Température constante
+                couches_phase = modificateur_temp.modifier_temperature_constante(couches_phase, modifs_temp[i])
+            elif isinstance(modifs_temp[i], tuple):  # Température linéaire
+                couches_phase = modificateur_temp.modifier_temperature_lineaire(couches_phase, modifs_temp[i][0],
+                                                                                modifs_temp[i][1])
 
-    #modification des lignes de gcode pour la modification de la température à la de la classe ModificateurVitesse
-    if modifs_vitesse:
-        modificateur_vitesse = ModificateurVitesse(couches_modifiees)
-        for i, variation_type in modifs_vitesse.items():
-            if isinstance(variation_type, float):  # Vitesse constante
-                couches_modifiees = modificateur_vitesse.modifier_vitesse_constante({i: variation_type}, [phases[i]])
-            elif isinstance(variation_type, tuple):  # Vitesse linéaire
-                couches_modifiees = modificateur_vitesse.modifier_vitesse_lineaire({i: variation_type}, [phases[i]])
+        if i in modifs_vitesse:
+            modificateur_vitesse = ModificateurVitesse()
+            if isinstance(modifs_vitesse[i], float):  # Vitesse constante
+                couches_phase = modificateur_vitesse.modifier_vitesse_constante(couches_phase, modifs_vitesse[i])
+            elif isinstance(modifs_vitesse[i], tuple):  # Vitesse linéaire
+                couches_phase = modificateur_vitesse.modifier_vitesse_lineaire(couches_phase, modifs_vitesse[i][0],
+                                                                               modifs_vitesse[i][1])
+
+        phases_modifiees.append(couches_phase)
 
     # sauvegarder le nouveau fichier G-code
     nom_fichier_entree = os.path.basename(chemin_fichier)
     nom_fichier_sortie = os.path.splitext(nom_fichier_entree)[0] + "_modifie.gcode"
     chemin_fichier_sortie = os.path.join(os.path.dirname(chemin_fichier), nom_fichier_sortie)
     # le nouveau fichier est sauvegardé sous le nom initial+modifier.gcode
-    sauvegarder_gcode(couches_modifiees, chemin_fichier_sortie)
+    sauvegarder_gcode(phases_modifiees, chemin_fichier_sortie)
     print(f"Nouveau fichier G-code écrit dans {chemin_fichier_sortie}")
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ class LecteurCodeG:
 
         return couches
 
-    #fonction pour obtenir les couhes
+    #fonction pour obtenir les couches
     def obtenir_couches(self):
         return self.couches
 
