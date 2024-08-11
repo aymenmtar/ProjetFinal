@@ -1,15 +1,107 @@
-"""""Bienvenue, ce code permet de modifier un fichier gcode afin de modifier la vitesse
-et la température d'extrusion par phase de la pièce
-"""
-#importattion des différents modules
+class LecteurCodeG:
+    def __init__(self, chemin_fichier):
+        self.chemin_fichier = chemin_fichier
+        self.couches = self._lire_codeg()
+
+    def _lire_codeg(self):
+        with open(self.chemin_fichier, 'r') as fichier:
+            lignes = fichier.readlines()
+        return self._diviser_en_couches(lignes)
+
+    def _diviser_en_couches(self, lignes):
+        couches = []
+        couche_actuelle = []
+
+        for ligne in lignes:
+            if ligne.startswith(';LAYER:'):
+                if couche_actuelle:
+                    couches.append(couche_actuelle)
+                    couche_actuelle = []
+            couche_actuelle.append(ligne)
+
+        if couche_actuelle:
+            couches.append(couche_actuelle)
+
+        return couches
+
+    def obtenir_couches(self):
+        return self.couches
+
+    def obtenir_nombre_de_couches(self):
+        return len(self.couches) - 1
+
+class ModificateurTemperature:
+    def __init__(self):
+        pass
+
+    def modifier_temperature_constante(self, couches, temperature):
+        couches_modifiees = []
+        for couche in couches:
+            couche_modifiee = []
+            for ligne in couche:
+                couche_modifiee.append(ligne)
+            couche_modifiee.insert(0, f'M109 S{temperature} ; Attendre température extrudeur\n')
+            couche_modifiee.insert(0, f'M104 S{temperature} ; Régler température extrudeur\n')
+            couches_modifiees.append(couche_modifiee)
+        return couches_modifiees
+
+    def modifier_temperature_lineaire(self, couches, temp_debut, temp_fin):
+        nombre_couches = len(couches)
+        pas_temp = (temp_fin - temp_debut) / (nombre_couches - 1)
+        couches_modifiees = []
+        for i, couche in enumerate(couches):
+            temp_actuelle = temp_debut + i * pas_temp
+            couche_modifiee = []
+            for ligne in couche:
+                couche_modifiee.append(ligne)
+            couche_modifiee.insert(0, f'M109 S{temp_actuelle} ; Attendre température extrudeur\n')
+            couche_modifiee.insert(0, f'M104 S{temp_actuelle} ; Régler température extrudeur\n')
+            couches_modifiees.append(couche_modifiee)
+        return couches_modifiees
+
+class ModificateurVitesse:
+    def __init__(self):
+        pass
+
+    def modifier_vitesse_constante(self, couches, ratio_vitesse):
+        couches_modifiees = []
+        for couche in couches:
+            couche_modifiee = []
+            for ligne in couche:
+                if 'G1' in ligne and ' F' in ligne:
+                    elements = ligne.split()
+                    for k, element in enumerate(elements):
+                        if element.startswith('F'):
+                            vitesse_originale = int(element[1:])
+                            nouvelle_vitesse = int(vitesse_originale * ratio_vitesse)
+                            elements[k] = f'F{nouvelle_vitesse}'
+                    ligne = ' '.join(elements) + '\n'
+                couche_modifiee.append(ligne)
+            couches_modifiees.append(couche_modifiee)
+        return couches_modifiees
+
+    def modifier_vitesse_lineaire(self, couches, vitesse_debut, vitesse_fin):
+        nombre_couches = len(couches)
+        pas_vitesse = (vitesse_fin - vitesse_debut) / (nombre_couches - 1)
+        couches_modifiees = []
+        for i, couche in enumerate(couches):
+            vitesse_actuelle = vitesse_debut + i * pas_vitesse
+            couche_modifiee = []
+            for ligne in couche:
+                if 'G1' in ligne and ' F' in ligne:
+                    elements = ligne.split()
+                    for k, element in enumerate(elements):
+                        if element.startswith('F'):
+                            nouvelle_vitesse = int(vitesse_actuelle)
+                            elements[k] = f'F{nouvelle_vitesse}'
+                    ligne = ' '.join(elements) + '\n'
+                couche_modifiee.append(ligne)
+            couches_modifiees.append(couche_modifiee)
+        return couches_modifiees
+
 import os
-from lire_codeg import LecteurCodeG
-from modifier_temperature import ModificateurTemperature
-from modifier_vitesse import ModificateurVitesse
 
-# fonction pour sauvegarder le nouveau fichier gcode
 def sauvegarder_gcode(phases_modifiees, chemin_sortie):
-
     code_final = []
     for phase in phases_modifiees:
         for couche in phase:
@@ -17,14 +109,10 @@ def sauvegarder_gcode(phases_modifiees, chemin_sortie):
     with open(chemin_sortie, 'w') as fichier:
         fichier.writelines(code_final)
 
-
 def main():
-    # ouverture du fichier gcode à l'aide de la classe LecteurCodeG
     chemin_fichier = input("Entrez le chemin du fichier G-code : ")
     lecteur_codeg = LecteurCodeG(chemin_fichier)
-    # affichage du nombre de couches de la pièce
     print(f"Nombre total de couches : {lecteur_codeg.obtenir_nombre_de_couches()}")
-    # demande à l'utilisateur du nombre de phases, des couches initiales et finales
     nombre_phases = int(input("Entrez le nombre de phases : "))
     phases = []
     for i in range(nombre_phases):
@@ -33,7 +121,6 @@ def main():
         phases.append((couche_debut, couche_fin))
 
     modifs_temp = {}
-    # choix de modifier la température ou non et choix de la température en °C + constante/linéaire
     changer_temp = input("Voulez-vous changer la température de la buse pour une phase spécifique ? (oui/non) : ").strip().lower()
     if changer_temp == 'oui':
         while True:
@@ -46,13 +133,11 @@ def main():
                 temp_debut = int(input("Entrez la température de la première couche de la phase : "))
                 temp_fin = int(input("Entrez la température de la dernière couche de la phase : "))
                 modifs_temp[phase_num - 1] = (temp_debut, temp_fin)
-            # modifier la température d'une autre phase
             continuer_changement = input("Voulez-vous changer la température pour une autre phase ? (oui/non) : ").strip().lower()
             if continuer_changement != 'oui':
                 break
 
     modifs_vitesse = {}
-    # choix de modifier la vitesse et choix de la vitesse en mm/s (constante/linéaire)
     changer_vitesse = input("Voulez-vous changer la vitesse d'impression pour une phase spécifique ? (oui/non) : ").strip().lower()
     if changer_vitesse == 'oui':
         while True:
@@ -72,7 +157,6 @@ def main():
                 vitesse_debut_mm_min = vitesse_debut * 60
                 vitesse_fin_mm_min = vitesse_fin * 60
                 modifs_vitesse[phase_num - 1] = (vitesse_debut_mm_min, vitesse_fin_mm_min)
-            # modifier la vitesse pour une autre phase
             continuer_changement = input("Voulez-vous changer la vitesse pour une autre phase ? (oui/non) : ").strip().lower()
             if continuer_changement != 'oui':
                 break
@@ -81,22 +165,20 @@ def main():
     phases_modifiees = []
 
     for i, (debut, fin) in enumerate(phases):
-        couches_phase = couches[debut - 1:fin]
+        couches_phase = couches[debut-1:fin]
         if i in modifs_temp:
             modificateur_temp = ModificateurTemperature()
             if isinstance(modifs_temp[i], int):  # Température constante
                 couches_phase = modificateur_temp.modifier_temperature_constante(couches_phase, modifs_temp[i])
             elif isinstance(modifs_temp[i], tuple):  # Température linéaire
-                couches_phase = modificateur_temp.modifier_temperature_lineaire(couches_phase, modifs_temp[i][0],
-                                                                                modifs_temp[i][1])
+                couches_phase = modificateur_temp.modifier_temperature_lineaire(couches_phase, modifs_temp[i][0], modifs_temp[i][1])
 
         if i in modifs_vitesse:
             modificateur_vitesse = ModificateurVitesse()
             if isinstance(modifs_vitesse[i], float):  # Vitesse constante
                 couches_phase = modificateur_vitesse.modifier_vitesse_constante(couches_phase, modifs_vitesse[i])
             elif isinstance(modifs_vitesse[i], tuple):  # Vitesse linéaire
-                couches_phase = modificateur_vitesse.modifier_vitesse_lineaire(couches_phase, modifs_vitesse[i][0],
-                                                                               modifs_vitesse[i][1])
+                couches_phase = modificateur_vitesse.modifier_vitesse_lineaire(couches_phase, modifs_vitesse[i][0], modifs_vitesse[i][1])
 
         phases_modifiees.append(couches_phase)
 
@@ -104,7 +186,7 @@ def main():
     nom_fichier_entree = os.path.basename(chemin_fichier)
     nom_fichier_sortie = os.path.splitext(nom_fichier_entree)[0] + "_modifie.gcode"
     chemin_fichier_sortie = os.path.join(os.path.dirname(chemin_fichier), nom_fichier_sortie)
-    # le nouveau fichier est sauvegardé sous le nom initial+modifier.gcode
+
     sauvegarder_gcode(phases_modifiees, chemin_fichier_sortie)
     print(f"Nouveau fichier G-code écrit dans {chemin_fichier_sortie}")
 
